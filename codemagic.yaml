@@ -1,29 +1,16 @@
-# Codemagic CI config for GroupRide — builds an installable Android APK.
-# Free-tier friendly. Docs: https://docs.codemagic.io/yaml/yaml-getting-started/
-#
-# It scaffolds the android/ folder (via tool/prepare_android.sh) then builds a
-# release APK and emails it + exposes it as a downloadable artifact.
-#
-# Optional: to bake in a Google Maps key, add an env var MAPS_API_KEY in the
-# Codemagic UI (App settings -> Environment variables) — prepare_android.sh
-# picks it up automatically.
 workflows:
   groupride-android:
     name: GroupRide Android APK
     max_build_duration: 60
-    instance_type: linux_x2   # change to mac_mini_m2 in the UI if your plan needs it
+    instance_type: mac_mini_m2
     environment:
       flutter: stable
       java: 17
-      vars:
-        MAPS_API_KEY: ""      # optional: set a real key here or in the UI
     scripts:
       - name: Scaffold Android project + apply manifest
-        script: |
-          bash tool/prepare_android.sh
+        script: bash tool/prepare_android.sh
       - name: Build release APK
-        script: |
-          flutter build apk --release
+        script: flutter build apk --release
     artifacts:
       - build/**/outputs/**/*.apk
     publishing:
