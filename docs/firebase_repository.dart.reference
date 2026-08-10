@@ -1,0 +1,151 @@
+// ============================================================================
+// FirebaseRepository — reference implementation (NOT compiled by default)
+// ============================================================================
+//
+// This file is intentionally named `.reference` so it is NOT part of the build
+// until you activate Firebase (see SETUP.md, Step 3). To use it:
+//   1. Add firebase_core / firebase_auth / cloud_firestore to pubspec.yaml.
+//   2. Copy this file to lib/data/firebase_repository.dart
+//   3. Return FirebaseRepository() from repository_provider.dart's firebase branch.
+//   4. Set AppConfig.backend = BackendMode.firebase.
+//
+// It implements the SAME `Repository` interface as LocalRepository, so no
+// screen or state code needs to change.
+//
+// Firestore layout:
+//   groups/{groupId}                         -> RiderGroup.toJson()
+//   rides/{rideId}                           -> Ride.toJson()
+//   profiles/{riderId}                       -> RiderProfile.toJson()
+//   history/{riderId}/rides/{historyId}      -> RideHistory.toJson()
+//   rides/{rideId}/live/{riderId}            -> live position (see note below)
+//
+// LIVE TRACKING NOTE
+// ------------------
+// For real multi-rider live tracking, have RideSession:
+//   • write your own position every ~2s to  rides/{rideId}/live/{riderId}
+//   • listen to the  rides/{rideId}/live  collection snapshots and map each doc
+//     to a RiderLiveState. Replace the local simulator's _tick() with those
+//     snapshots. Quick requests -> rides/{rideId}/requests (a collection you
+//     listen to). Everything else (dashboard, separation math, health) stays
+//     exactly as written.
+
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+
+import '../models/group.dart';
+import '../models/ride.dart';
+import '../models/ride_history.dart';
+import '../models/rider_profile.dart';
+import 'repository.dart';
+
+class FirebaseRepository implements Repository {
+  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseAuth _auth = FirebaseAuth.instance;
+
+  String get _uid => _auth.currentUser?.uid ?? 'anonymous';
+
+  @override
+  Future<void> init() async {
+    // Sign in anonymously if you don't want a full auth screen yet.
+    if (_auth.currentUser == null) {
+      await _auth.signInAnonymously();
+    }
+  }
+
+  // ---- Profile ----
+  @override
+  Future<RiderProfile?> getProfile() async {
+    final doc = await _db.collection('profiles').doc(_uid).get();
+    if (!doc.exists) return null;
+    return RiderProfile.fromJson(doc.data()!);
+  }
+
+  @override
+  Future<void> saveProfile(RiderProfile profile) async {
+    await _db.collection('profiles').doc(profile.id).set(profile.toJson());
+  }
+
+  // ---- Groups ----
+  @override
+  Future<List<RiderGroup>> getGroups() async {
+    final snap = await _db
+        .collection('groups')
+        .where('memberIds', arrayContains: _uid)
+        .get();
+    return snap.docs.map((d) => RiderGroup.fromJson(d.data())).toList();
+  }
+
+  @override
+  Future<RiderGroup?> getGroup(String id) async {
+    final d = await _db.collection('groups').doc(id).get();
+    return d.exists ? RiderGroup.fromJson(d.data()!) : null;
+  }
+
+  @override
+  Future<void> saveGroup(RiderGroup group) async {
+    await _db.collection('groups').doc(group.id).set(group.toJson());
+  }
+
+  @override
+  Future<void> deleteGroup(String id) async {
+    await _db.collection('groups').doc(id).delete();
+  }
+
+  @override
+  Future<RiderGroup?> findGroupByCode(String code) async {
+    final snap = await _db
+        .collection('groups')
+        .where('joinCode', isEqualTo: code.trim().toUpperCase())
+        .limit(1)
+        .get();
+    if (snap.docs.isEmpty) return null;
+    return RiderGroup.fromJson(snap.docs.first.data());
+  }
+
+  // ---- Rides ----
+  @override
+  Future<List<Ride>> getRides({String? groupId}) async {
+    Query<Map<String, dynamic>> q = _db.collection('rides');
+    if (groupId != null) q = q.where('groupId', isEqualTo: groupId);
+    final snap = await q.get();
+    return snap.docs.map((d) => Ride.fromJson(d.data())).toList();
+  }
+
+  @override
+  Future<Ride?> getRide(String id) async {
+    final d = await _db.collection('rides').doc(id).get();
+    return d.exists ? Ride.fromJson(d.data()!) : null;
+  }
+
+  @override
+  Future<void> saveRide(Ride ride) async {
+    await _db.collection('rides').doc(ride.id).set(ride.toJson());
+  }
+
+  @override
+  Future<void> deleteRide(String id) async {
+    await _db.collection('rides').doc(id).delete();
+  }
+
+  // ---- History ----
+  @override
+  Future<List<RideHistory>> getHistory() async {
+    final snap = await _db
+        .collection('history')
+        .doc(_uid)
+        .collection('rides')
+        .orderBy('completedAt', descending: true)
+        .get();
+    return snap.docs.map((d) => RideHistory.fromJson(d.data())).toList();
+  }
+
+  @override
+  Future<void> saveHistory(RideHistory history) async {
+    await _db
+        .collection('history')
+        .doc(_uid)
+        .collection('rides')
+        .doc(history.id)
+        .set(history.toJson());
+  }
+}

@@ -1,0 +1,143 @@
+# GroupRide — Setup & Go‑Live Guide
+
+This walks you from "zip on my computer" to "installable APK on my phone", then
+to loading real map tiles, then to riding **live** with friends via Firebase.
+
+You can stop after any step — each one produces a working app.
+
+---
+
+## Step 1 — Get an installable APK (GitHub Actions, no tools to install)
+
+GitHub's build servers have full internet access, so they can compile the APK
+even though your machine may not have Flutter/Android Studio.
+
+1. **Create a repo:** go to <https://github.com/new>, name it `grouprde`
+   (Private is fine), and create it — empty, no README.
+2. **Push this project** (run inside the unzipped folder):
+   ```bash
+   git init
+   git add .
+   git commit -m "GroupRide MVP"
+   git branch -M main
+   git remote add origin https://github.com/<your-username>/grouprde.git
+   git push -u origin main
+   ```
+   (No git? You can instead drag‑and‑drop all files into the repo via GitHub's
+   "uploading an existing file" web page — but keep the folder structure.)
+3. **Wait for the build:** open the repo's **Actions** tab. A run named
+   *“Build GroupRide APK”* starts automatically. It takes ~5–8 minutes.
+4. **Download the APK:** click the finished run → scroll to **Artifacts** →
+   download **`grouprde-apk`** → unzip → you have `app-release.apk`.
+5. **Install on Android:** transfer the APK to your phone (USB, Drive,
+   WhatsApp‑to‑self…), tap it, and allow "install from unknown sources" for the
+   app you opened it with. Done.
+
+> Re‑run anytime from **Actions → Build GroupRide APK → Run workflow**.
+
+---
+
+## Step 2 — Load real map tiles (Google Maps API key)
+
+Without a key the map is fully interactive (markers, routes, taps) but tiles
+render grey. To fix that:
+
+1. Go to the **Google Cloud Console** → create/select a project:
+   <https://console.cloud.google.com/>.
+2. **APIs & Services → Enable APIs** → enable **“Maps SDK for Android”**.
+   (For real turn‑by‑turn later, also enable **Directions API** and
+   **Places API**.)
+3. **APIs & Services → Credentials → Create credentials → API key.** Copy it.
+   (Recommended: restrict the key to Android apps + the Maps SDK.)
+4. Add the key one of two ways:
+   - **Easiest (CI):** in your GitHub repo → **Settings → Secrets and variables
+     → Actions → New repository secret**, name it `MAPS_API_KEY`, paste the key.
+     Re‑run the build. The workflow injects it automatically.
+   - **In code:** open `android_overrides/AndroidManifest.xml` and replace
+     `YOUR_GOOGLE_MAPS_API_KEY` with your key, commit, push.
+
+That's it — tiles now load.
+
+---
+
+## Step 3 — Go live with friends (Firebase)
+
+Local mode stores everything on one device and simulates other riders. To have
+real people share a group and see each other move in real time, add Firebase.
+Firestore gives you live location sync with **no server to run**.
+
+### 3a. Create the Firebase project
+1. <https://console.firebase.google.com/> → **Add project** (reuse your Google
+   Cloud project if you like).
+2. **Build → Authentication → Get started** → enable a sign‑in method
+   (Email/Password or Phone are simplest).
+3. **Build → Firestore Database → Create database** → start in test mode
+   (tighten rules before real launch).
+
+### 3b. Register the Android app & add config
+1. In Firebase → **Project settings → Your apps → Add app → Android**.
+2. Package name: **`com.grouprde.grouprde`** (matches this project).
+3. Download **`google-services.json`** and place it at
+   `android_overrides/google-services.json` (and the build copies it to
+   `android/app/`), **or** add it as a base64 GitHub secret and write it in CI.
+   > `google-services.json` is git‑ignored by default — keep it out of public repos.
+
+### 3c. Add the dependencies
+In `pubspec.yaml` under `dependencies:` add:
+```yaml
+  firebase_core: ^3.6.0
+  firebase_auth: ^5.3.1
+  cloud_firestore: ^5.4.4
+```
+And enable the Google Services Gradle plugin (the build script step, or add to
+`android/app/build.gradle(.kts)`):
+```
+plugins { id("com.google.gms.google-services") }
+```
+with the classpath in `android/settings.gradle(.kts)` /
+`android/build.gradle(.kts)` per the FlutterFire docs:
+<https://firebase.flutter.dev/docs/overview/>. The easiest route is the
+`flutterfire configure` CLI, which wires all of this for you.
+
+### 3d. Add the FirebaseRepository & flip the switch
+1. Copy `docs/firebase_repository.dart.reference` to
+   `lib/data/firebase_repository.dart` (it already implements the same
+   `Repository` interface as `LocalRepository`).
+2. In `lib/data/repository_provider.dart`, return `FirebaseRepository()` from
+   the `BackendMode.firebase` branch (uncomment the line).
+3. In `lib/config/app_config.dart` set:
+   ```dart
+   static const BackendMode backend = BackendMode.firebase;
+   ```
+4. In `lib/main.dart`, initialize Firebase before `runApp`:
+   ```dart
+   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+   ```
+   (generated by `flutterfire configure`).
+
+Push, let CI build, install — you're now live. Groups, rides and (with a small
+Firestore listener in `RideSession`, noted in the reference file) live positions
+sync across every rider's phone.
+
+---
+
+## Local build (optional)
+
+If you install Flutter (<https://docs.flutter.dev/get-started/install>):
+```bash
+bash tool/prepare_android.sh
+flutter build apk --release      # build/app/outputs/flutter-apk/app-release.apk
+flutter run                      # run on a device/emulator
+```
+
+---
+
+## Troubleshooting
+
+- **Build fails on `flutter create`:** ensure the project folder name has no
+  spaces and `pubspec.yaml` is at the root.
+- **Map is grey:** you haven't added a Maps key (Step 2) — expected.
+- **APK won't install:** enable "install unknown apps" for the app you're
+  opening the file with; make sure it's `app-release.apk`, not the zip.
+- **Want a smaller download:** `flutter build apk --split-per-abi` produces
+  per‑CPU APKs (use `app-arm64-v8a-release.apk` for most modern phones).

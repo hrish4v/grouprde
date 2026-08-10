@@ -1,0 +1,28 @@
+# Flutter/Dart
+.dart_tool/
+.packages
+.pub-cache/
+.pub/
+build/
+.flutter-plugins
+.flutter-plugins-dependencies
+
+# Generated platform folders are scaffolded by tool/prepare_android.sh in CI.
+# Keep them out of version control so the build is always reproducible.
+/android/
+/ios/
+/linux/
+/macos/
+/windows/
+/web/
+
+# IDE
+.idea/
+.vscode/
+*.iml
+
+# Secrets — never commit real keys or google-services.json
+android/app/google-services.json
+**/key.properties
+*.keystore
+*.jks

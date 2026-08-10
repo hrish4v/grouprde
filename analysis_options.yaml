@@ -1,0 +1,13 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  errors:
+    # Keep these as info/warnings so a stray deprecation never blocks the APK
+    # build. (CI runs `flutter analyze` non-blocking anyway.)
+    deprecated_member_use: ignore
+    deprecated_member_use_from_same_package: ignore
+
+linter:
+  rules:
+    prefer_const_constructors: false
+    avoid_print: false
