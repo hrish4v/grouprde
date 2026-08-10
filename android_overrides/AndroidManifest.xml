@@ -14,7 +14,7 @@
              Until then the map is interactive but tiles render grey. -->
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="YOUR_GOOGLE_MAPS_API_KEY"/>
+            android:value="AIzaSyC6Zj0mCFxiI1lVUrWcV8Z1mWy3gvXYCmE"/>
 
         <activity
             android:name=".MainActivity"
