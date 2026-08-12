@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
@@ -33,6 +35,14 @@ class AppState extends ChangeNotifier {
 
   String? _loadedUid;
 
+  /// Last backend error surfaced to the UI (e.g. Firestore unreachable), so the
+  /// app can show it instead of freezing.
+  String? lastError;
+  void clearError() {
+    lastError = null;
+    notifyListeners();
+  }
+
   Future<void> init() async {
     await repo.init();
     if (AppConfig.isLocal) {
@@ -50,12 +60,25 @@ class AppState extends ChangeNotifier {
   }
 
   /// Firebase mode: load the signed-in user's profile + data once.
+  /// Never hangs — reads time out, and errors are captured in [lastError]
+  /// instead of freezing the UI.
   Future<void> ensureLoaded(String uid) async {
     if (_loadedUid == uid && _profile != null) return;
     _loadedUid = uid;
-    _profile = await repo.getProfile();
-    if (_profile != null) {
-      await refreshAll();
+    lastError = null;
+    try {
+      _profile =
+          await repo.getProfile().timeout(const Duration(seconds: 12));
+      if (_profile != null) {
+        await refreshAll().timeout(const Duration(seconds: 12));
+      }
+    } on TimeoutException {
+      lastError =
+          'Timed out reaching the database. Check your internet connection and try again.';
+      _profile = null;
+    } catch (e) {
+      lastError = 'Database error: $e';
+      _profile = null;
     }
     notifyListeners();
   }

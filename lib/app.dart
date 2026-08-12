@@ -96,7 +96,11 @@ class _AuthedGateState extends State<_AuthedGate> {
   }
 
   Future<void> _load() async {
-    await context.read<AppState>().ensureLoaded(widget.uid);
+    try {
+      await context.read<AppState>().ensureLoaded(widget.uid);
+    } catch (_) {
+      // ensureLoaded already captures errors; never let this hang the UI.
+    }
     if (mounted) setState(() => _loaded = true);
   }
 
@@ -104,6 +108,49 @@ class _AuthedGateState extends State<_AuthedGate> {
   Widget build(BuildContext context) {
     final state = context.watch<AppState>();
     if (!_loaded) return _splash();
+
+    // If the profile load failed (e.g. Firestore unreachable), show the error
+    // rather than freezing — with a retry.
+    if (state.lastError != null && !state.isOnboarded) {
+      return Scaffold(
+        body: SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Text('⚠️', style: TextStyle(fontSize: 48)),
+                const SizedBox(height: 16),
+                const Text('Couldn’t load your data',
+                    style:
+                        TextStyle(fontSize: 20, fontWeight: FontWeight.w800)),
+                const SizedBox(height: 10),
+                Text(state.lastError!,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white.withOpacity(0.7))),
+                const SizedBox(height: 24),
+                ElevatedButton(
+                  onPressed: () {
+                    state.clearError();
+                    setState(() => _loaded = false);
+                    _load();
+                  },
+                  child: const Text('Try again'),
+                ),
+                TextButton(
+                  onPressed: () {
+                    state.clearError();
+                    setState(() {});
+                  },
+                  child: const Text('Continue to profile setup'),
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+
     return state.isOnboarded ? const HomeShell() : const OnboardingScreen();
   }
 }

@@ -40,16 +40,26 @@ class _OnboardingScreenState extends State<OnboardingScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
     setState(() => _saving = true);
-    await context.read<AppState>().createProfile(
-          name: _name.text.trim(),
-          bikeModel: _bike.text.trim(),
-          phone: _phone.text.trim(),
-          preferredSpeed: _speed.round(),
-          emergencyName: _emName.text.trim(),
-          emergencyPhone: _emPhone.text.trim(),
-          emoji: _emoji,
-        );
-    // Gate rebuilds automatically via provider.
+    try {
+      await context.read<AppState>().createProfile(
+            name: _name.text.trim(),
+            bikeModel: _bike.text.trim(),
+            phone: _phone.text.trim(),
+            preferredSpeed: _speed.round(),
+            emergencyName: _emName.text.trim(),
+            emergencyPhone: _emPhone.text.trim(),
+            emoji: _emoji,
+          );
+      // On success the gate rebuilds automatically via provider.
+    } catch (e) {
+      if (mounted) {
+        setState(() => _saving = false);
+        ScaffoldMessenger.of(context).showSnackBar(SnackBar(
+          content: Text('Could not save profile: $e'),
+          duration: const Duration(seconds: 6),
+        ));
+      }
+    }
   }
 
   @override
