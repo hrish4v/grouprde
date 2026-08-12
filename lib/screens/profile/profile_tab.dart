@@ -28,6 +28,31 @@ class ProfileTab extends StatelessWidget {
                 MaterialPageRoute(
                     builder: (_) => const EditProfileScreen())),
           ),
+          if (AppConfig.isFirebase)
+            IconButton(
+              icon: const Icon(Icons.logout),
+              tooltip: 'Sign out',
+              onPressed: () async {
+                final ok = await showDialog<bool>(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
+                    backgroundColor: AppTheme.cardDark,
+                    title: const Text('Sign out?'),
+                    content: const Text(
+                        'You can sign back in anytime with the same email.'),
+                    actions: [
+                      TextButton(
+                          onPressed: () => Navigator.pop(ctx, false),
+                          child: const Text('Cancel')),
+                      ElevatedButton(
+                          onPressed: () => Navigator.pop(ctx, true),
+                          child: const Text('Sign out')),
+                    ],
+                  ),
+                );
+                if (ok == true) await context.read<AppState>().signOut();
+              },
+            ),
         ],
       ),
       body: ListView(

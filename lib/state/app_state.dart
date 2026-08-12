@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:uuid/uuid.dart';
 
+import '../config/app_config.dart';
 import '../data/repository.dart';
 import '../data/repository_provider.dart';
 import '../models/enums.dart';
@@ -10,6 +11,7 @@ import '../models/ride_history.dart';
 import '../models/rider_profile.dart';
 import '../services/demo_seed.dart';
 import '../services/location_service.dart';
+import 'auth_service.dart';
 
 /// Top-level app state: current rider, groups, rides, history. Backed by the
 /// active [Repository] (local now, Firebase-ready later).
@@ -29,16 +31,43 @@ class AppState extends ChangeNotifier {
   List<Ride> rides = [];
   List<RideHistory> history = [];
 
+  String? _loadedUid;
+
   Future<void> init() async {
     await repo.init();
-    _profile = await repo.getProfile();
-    if (_profile != null) {
-      await DemoSeed.seedIfEmpty(repo, _profile!.id);
-      await refreshAll();
+    if (AppConfig.isLocal) {
+      _profile = await repo.getProfile();
+      if (_profile != null) {
+        await DemoSeed.seedIfEmpty(repo, _profile!.id);
+        await refreshAll();
+      }
     }
+    // In Firebase mode the profile is loaded after sign-in via ensureLoaded().
     // fire and forget — don't block UI on permission
     location.ensurePermission();
     _ready = true;
+    notifyListeners();
+  }
+
+  /// Firebase mode: load the signed-in user's profile + data once.
+  Future<void> ensureLoaded(String uid) async {
+    if (_loadedUid == uid && _profile != null) return;
+    _loadedUid = uid;
+    _profile = await repo.getProfile();
+    if (_profile != null) {
+      await refreshAll();
+    }
+    notifyListeners();
+  }
+
+  /// Firebase mode: sign out and clear state.
+  Future<void> signOut() async {
+    await AuthService().signOut();
+    _profile = null;
+    _loadedUid = null;
+    groups = [];
+    rides = [];
+    history = [];
     notifyListeners();
   }
 
@@ -59,8 +88,13 @@ class AppState extends ChangeNotifier {
     String emergencyPhone = '',
     String emoji = '🏍️',
   }) async {
+    // In Firebase mode the profile id must be the auth uid so it maps to
+    // profiles/{uid}. In local mode a random id is fine.
+    final id = AppConfig.isFirebase
+        ? (AuthService().uid ?? _uuid.v4())
+        : _uuid.v4();
     final p = RiderProfile(
-      id: _uuid.v4(),
+      id: id,
       name: name,
       bikeModel: bikeModel,
       phone: phone,
@@ -71,7 +105,10 @@ class AppState extends ChangeNotifier {
     );
     await repo.saveProfile(p);
     _profile = p;
-    await DemoSeed.seedIfEmpty(repo, p.id);
+    _loadedUid = id;
+    if (AppConfig.isLocal) {
+      await DemoSeed.seedIfEmpty(repo, p.id);
+    }
     await refreshAll();
   }
 

@@ -52,6 +52,7 @@ class RideDetailScreen extends StatelessWidget {
             child: GoogleMap(
               initialCameraPosition:
                   CameraPosition(target: r.startPoint.latLng, zoom: 7),
+              style: kLightMapStyle,
               onMapCreated: (c) async {
                 await Future.delayed(const Duration(milliseconds: 300));
                 final pts = [
@@ -87,7 +88,7 @@ class RideDetailScreen extends StatelessWidget {
                       polylineId: const PolylineId('r'),
                       points: toLatLngs(r.routePoints),
                       color: AppTheme.primary,
-                      width: 5),
+                      width: 7),
               },
               zoomControlsEnabled: false,
               myLocationButtonEnabled: false,

@@ -296,6 +296,7 @@ class _CreateRideScreenState extends State<CreateRideScreen> {
                 GoogleMap(
                   initialCameraPosition: const CameraPosition(
                       target: LatLng(12.9716, 77.5946), zoom: 7),
+                  style: kLightMapStyle,
                   onMapCreated: (c) => _map = c,
                   onTap: _onTap,
                   markers: _markers(),

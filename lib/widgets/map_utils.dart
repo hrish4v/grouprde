@@ -2,6 +2,14 @@ import 'package:google_maps_flutter/google_maps_flutter.dart';
 
 import '../models/geo.dart';
 
+/// A light map style. Passing a non-empty style to GoogleMap disables the
+/// SDK's automatic dark mode (which otherwise follows the phone theme and
+/// makes the map near-black), so the map always renders as a clean, readable
+/// light map. Also hides noisy POI/transit icons.
+const String kLightMapStyle =
+    '[{"featureType":"poi","elementType":"labels.icon","stylers":[{"visibility":"off"}]},'
+    '{"featureType":"transit","stylers":[{"visibility":"off"}]}]';
+
 /// Conversions between our platform-agnostic [GeoPoint] and the maps plugin's
 /// [LatLng], plus small camera helpers.
 extension GeoPointX on GeoPoint {

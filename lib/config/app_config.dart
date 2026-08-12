@@ -23,7 +23,7 @@ class AppConfig {
   ///
   /// FIREBASE: activated once you follow SETUP.md (add firebase deps +
   /// google-services.json and set [backend] to BackendMode.firebase).
-  static const BackendMode backend = BackendMode.local;
+  static const BackendMode backend = BackendMode.firebase;
 
   static bool get isLocal => backend == BackendMode.local;
   static bool get isFirebase => backend == BackendMode.firebase;

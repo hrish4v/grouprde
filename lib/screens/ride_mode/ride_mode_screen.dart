@@ -178,6 +178,7 @@ class _RideModeBodyState extends State<_RideModeBody> {
             GoogleMap(
               initialCameraPosition: CameraPosition(
                   target: widget.ride.startPoint.latLng, zoom: 9),
+              style: kLightMapStyle,
               onMapCreated: (c) => _map = c,
               markers: {
                 for (final r in riders)
@@ -205,8 +206,8 @@ class _RideModeBodyState extends State<_RideModeBody> {
                   Polyline(
                       polylineId: const PolylineId('route'),
                       points: toLatLngs(widget.ride.routePoints),
-                      color: AppTheme.primary.withOpacity(0.7),
-                      width: 5),
+                      color: AppTheme.primary,
+                      width: 7),
               },
               zoomControlsEnabled: false,
               myLocationButtonEnabled: false,

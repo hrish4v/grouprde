@@ -37,6 +37,7 @@ class RideSummaryScreen extends StatelessWidget {
                 : GoogleMap(
                     initialCameraPosition: CameraPosition(
                         target: h.actualRoute.first.latLng, zoom: 8),
+                    style: kLightMapStyle,
                     onMapCreated: (c) async {
                       await Future.delayed(const Duration(milliseconds: 300));
                       c.animateCamera(CameraUpdate.newLatLngBounds(
@@ -59,7 +60,7 @@ class RideSummaryScreen extends StatelessWidget {
                           polylineId: const PolylineId('r'),
                           points: toLatLngs(h.actualRoute),
                           color: AppTheme.primary,
-                          width: 5),
+                          width: 7),
                     },
                     zoomControlsEnabled: false,
                     myLocationButtonEnabled: false,
