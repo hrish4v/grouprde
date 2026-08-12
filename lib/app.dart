@@ -94,8 +94,26 @@ class _DebugPanel extends StatelessWidget {
   }
 }
 
-class _Gate extends StatelessWidget {
+class _Gate extends StatefulWidget {
   const _Gate();
+
+  @override
+  State<_Gate> createState() => _GateState();
+}
+
+class _GateState extends State<_Gate> {
+  // Create the auth stream ONCE and keep it stable. Recreating it on every
+  // rebuild caused the loading loop (StreamBuilder re-subscribed → the authed
+  // subtree was torn down and reloaded endlessly).
+  Stream<User?>? _authStream;
+
+  @override
+  void initState() {
+    super.initState();
+    if (AppConfig.isFirebase) {
+      _authStream = FirebaseAuth.instance.authStateChanges();
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -109,7 +127,7 @@ class _Gate extends StatelessWidget {
 
     // FIREBASE mode: gate on auth state.
     return StreamBuilder<User?>(
-      stream: FirebaseAuth.instance.authStateChanges(),
+      stream: _authStream,
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return _splash();

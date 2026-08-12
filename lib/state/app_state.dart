@@ -35,6 +35,7 @@ class AppState extends ChangeNotifier {
   List<RideHistory> history = [];
 
   String? _loadedUid;
+  bool _loading = false;
 
   /// Last backend error surfaced to the UI (e.g. Firestore unreachable), so the
   /// app can show it instead of freezing.
@@ -67,8 +68,10 @@ class AppState extends ChangeNotifier {
   /// Never hangs — reads time out, and errors are captured in [lastError]
   /// instead of freezing the UI.
   Future<void> ensureLoaded(String uid) async {
-    if (_loadedUid == uid && _profile != null) return;
-    _loadedUid = uid;
+    // Already loaded this user (success), or a load is in flight -> do nothing.
+    // This is what prevents the reload loop for new users with no profile yet.
+    if (_loadedUid == uid || _loading) return;
+    _loading = true;
     lastError = null;
     DebugLog.add('ensureLoaded: start');
     try {
@@ -80,6 +83,9 @@ class AppState extends ChangeNotifier {
         await refreshAll().timeout(const Duration(seconds: 12));
         DebugLog.add('ensureLoaded: refreshAll done');
       }
+      // Mark as loaded on SUCCESS even when there is no profile yet, so we
+      // don't re-fetch endlessly.
+      _loadedUid = uid;
     } on TimeoutException {
       lastError =
           'Timed out reaching the database (12s). Check internet / Firestore rules.';
@@ -89,6 +95,8 @@ class AppState extends ChangeNotifier {
       lastError = 'Database error: $e';
       _profile = null;
       DebugLog.add('ensureLoaded: ERROR $e');
+    } finally {
+      _loading = false;
     }
     DebugLog.add('ensureLoaded: done (profile=${_profile != null})');
     notifyListeners();

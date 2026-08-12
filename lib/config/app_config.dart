@@ -13,7 +13,7 @@ class AppConfig {
 
   /// Bump this each diagnostic build so we can confirm on-device which build is
   /// actually running (shown on the loading screen).
-  static const String buildTag = 'fb-debug-1';
+  static const String buildTag = 'fb-debug-2';
 
   /// ---- Google Maps ----
   /// The real key lives in android/app/src/main/AndroidManifest.xml.
