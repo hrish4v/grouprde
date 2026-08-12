@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 
 import 'config/app_config.dart';
 import 'config/theme.dart';
+import 'services/debug_log.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/auth/onboarding_screen.dart';
 import 'screens/home/home_shell.dart';
@@ -23,21 +24,75 @@ class GroupRideApp extends StatelessWidget {
   }
 }
 
-Widget _splash() => const Scaffold(
-      body: Center(
+Widget _splash() => Scaffold(
+      body: SafeArea(
         child: Column(
-          mainAxisSize: MainAxisSize.min,
           children: [
-            Text('🏍️', style: TextStyle(fontSize: 64)),
-            SizedBox(height: 16),
-            Text(AppConfig.appName,
-                style: TextStyle(fontSize: 26, fontWeight: FontWeight.w800)),
-            SizedBox(height: 24),
-            CircularProgressIndicator(),
+            Expanded(
+              child: Center(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('🏍️', style: TextStyle(fontSize: 64)),
+                    SizedBox(height: 16),
+                    Text(AppConfig.appName,
+                        style: TextStyle(
+                            fontSize: 26, fontWeight: FontWeight.w800)),
+                    SizedBox(height: 8),
+                    Text('build: ${AppConfig.buildTag}',
+                        style: TextStyle(fontSize: 12, color: Colors.grey)),
+                    SizedBox(height: 24),
+                    CircularProgressIndicator(),
+                  ],
+                ),
+              ),
+            ),
+            const _DebugPanel(),
           ],
         ),
       ),
     );
+
+/// Shows the live in-app log at the bottom of the loading screen so we can see
+/// exactly where startup stalls.
+class _DebugPanel extends StatelessWidget {
+  const _DebugPanel();
+
+  @override
+  Widget build(BuildContext context) {
+    return ValueListenableBuilder<int>(
+      valueListenable: DebugLog.tick,
+      builder: (context, _, __) {
+        final lines = DebugLog.lines;
+        return Container(
+          width: double.infinity,
+          height: 200,
+          margin: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(
+            color: Colors.black,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Colors.white24),
+          ),
+          child: ListView(
+            reverse: true,
+            children: [
+              for (final line in lines.reversed)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 1),
+                  child: Text(line,
+                      style: const TextStyle(
+                          fontFamily: 'monospace',
+                          fontSize: 11,
+                          color: Color(0xFF7CFC7C))),
+                ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+}
 
 class _Gate extends StatelessWidget {
   const _Gate();

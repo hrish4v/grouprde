@@ -11,6 +11,7 @@ import '../models/group.dart';
 import '../models/ride.dart';
 import '../models/ride_history.dart';
 import '../models/rider_profile.dart';
+import '../services/debug_log.dart';
 import '../services/demo_seed.dart';
 import '../services/location_service.dart';
 import 'auth_service.dart';
@@ -44,7 +45,9 @@ class AppState extends ChangeNotifier {
   }
 
   Future<void> init() async {
+    DebugLog.add('AppState.init start (${AppConfig.backend.name})');
     await repo.init();
+    DebugLog.add('repo.init done');
     if (AppConfig.isLocal) {
       _profile = await repo.getProfile();
       if (_profile != null) {
@@ -56,6 +59,7 @@ class AppState extends ChangeNotifier {
     // fire and forget — don't block UI on permission
     location.ensurePermission();
     _ready = true;
+    DebugLog.add('AppState ready');
     notifyListeners();
   }
 
@@ -66,20 +70,27 @@ class AppState extends ChangeNotifier {
     if (_loadedUid == uid && _profile != null) return;
     _loadedUid = uid;
     lastError = null;
+    DebugLog.add('ensureLoaded: start');
     try {
       _profile =
           await repo.getProfile().timeout(const Duration(seconds: 12));
+      DebugLog.add(
+          'ensureLoaded: getProfile -> ${_profile == null ? "null (new user)" : "existing profile"}');
       if (_profile != null) {
         await refreshAll().timeout(const Duration(seconds: 12));
+        DebugLog.add('ensureLoaded: refreshAll done');
       }
     } on TimeoutException {
       lastError =
-          'Timed out reaching the database. Check your internet connection and try again.';
+          'Timed out reaching the database (12s). Check internet / Firestore rules.';
       _profile = null;
+      DebugLog.add('ensureLoaded: TIMEOUT');
     } catch (e) {
       lastError = 'Database error: $e';
       _profile = null;
+      DebugLog.add('ensureLoaded: ERROR $e');
     }
+    DebugLog.add('ensureLoaded: done (profile=${_profile != null})');
     notifyListeners();
   }
 

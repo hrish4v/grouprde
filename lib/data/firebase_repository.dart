@@ -5,6 +5,7 @@ import '../models/group.dart';
 import '../models/ride.dart';
 import '../models/ride_history.dart';
 import '../models/rider_profile.dart';
+import '../services/debug_log.dart';
 import 'repository.dart';
 
 /// Firestore-backed implementation of [Repository]. Groups, rides and history
@@ -29,7 +30,9 @@ class FirebaseRepository implements Repository {
   // ---- Profile ----
   @override
   Future<RiderProfile?> getProfile() async {
+    DebugLog.add('FS: reading profiles/$_uid …');
     final doc = await _db.collection('profiles').doc(_uid).get();
+    DebugLog.add('FS: profiles read OK (exists=${doc.exists})');
     final data = doc.data();
     if (data == null) return null;
     return RiderProfile.fromJson(data);

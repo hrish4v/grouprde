@@ -11,6 +11,10 @@ class AppConfig {
   static const String appName = 'GroupRide';
   static const String tagline = 'Plan together. Ride together. Stay together.';
 
+  /// Bump this each diagnostic build so we can confirm on-device which build is
+  /// actually running (shown on the loading screen).
+  static const String buildTag = 'fb-debug-1';
+
   /// ---- Google Maps ----
   /// The real key lives in android/app/src/main/AndroidManifest.xml.
   /// Until you add a real key, map tiles render grey but every other feature
